@@ -31,6 +31,7 @@ test = false
 [dependencies]
 # begin automatic update
 clippy_lints = { version = "0.0.121", path = "clippy_lints" }
+clippy_analyses = { version = "0.0.121", path = "clippy_analyses" }
 # end automatic update
 cargo_metadata = "0.1.1"
 

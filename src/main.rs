@@ -5,6 +5,7 @@
 #![allow(unknown_lints, missing_docs_in_private_items)]
 
 extern crate clippy_lints;
+extern crate clippy_analyses;
 extern crate getopts;
 extern crate rustc;
 extern crate rustc_driver;
@@ -83,6 +84,7 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
                                                                                  .span);
                     registry.args_hidden = Some(Vec::new());
                     clippy_lints::register_plugins(&mut registry);
+                    clippy_analyses::register_plugins(&mut registry);
 
                     let rustc_plugin::registry::Registry { early_lint_passes,
                                                            late_lint_passes,
@@ -169,7 +171,11 @@ pub fn main() {
         return;
     }
 
-    let dep_path = env::current_dir().expect("current dir is not readable").join("target").join("debug").join("deps");
+    let dep_path = env::current_dir()
+        .expect("current dir is not readable")
+        .join("target")
+        .join("debug")
+        .join("deps");
 
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // this arm is executed on the initial call to `cargo clippy`
@@ -177,7 +183,7 @@ pub fn main() {
         let manifest_path_arg = std::env::args().skip(2).find(|val| val.starts_with("--manifest-path="));
 
         let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(manifest_path_arg.as_ref()
-            .map(AsRef::as_ref)) {
+                                                                              .map(AsRef::as_ref)) {
             metadata
         } else {
             let _ = io::stderr().write_fmt(format_args!("error: Could not obtain cargo metadata.\n"));
@@ -196,8 +202,8 @@ pub fn main() {
                     package_manifest_path == manifest_path
                 } else {
                     let current_dir = current_dir.as_ref().expect("could not read current directory");
-                    let package_manifest_directory = package_manifest_path.parent()
-                        .expect("could not find parent directory of package manifest");
+                    let package_manifest_directory =
+                        package_manifest_path.parent().expect("could not find parent directory of package manifest");
                     package_manifest_directory == current_dir
                 }
             })
@@ -243,31 +249,31 @@ pub fn main() {
         };
 
         rustc_driver::in_rustc_thread(|| {
-                // this conditional check for the --sysroot flag is there so users can call `cargo-clippy` directly
-                // without having to pass --sysroot or anything
-                let mut args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
-                    env::args().collect()
-                } else {
-                    env::args().chain(Some("--sysroot".to_owned())).chain(Some(sys_root)).collect()
-                };
+            // this conditional check for the --sysroot flag is there so users can call `cargo-clippy` directly
+            // without having to pass --sysroot or anything
+            let mut args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
+                env::args().collect()
+            } else {
+                env::args().chain(Some("--sysroot".to_owned())).chain(Some(sys_root)).collect()
+            };
 
-                // this check ensures that dependencies are built but not linted and the final crate is
-                // linted but not built
-                let clippy_enabled = env::args().any(|s| s == "-Zno-trans");
+            // this check ensures that dependencies are built but not linted and the final crate is
+            // linted but not built
+            let clippy_enabled = env::args().any(|s| s == "-Zno-trans");
 
-                if clippy_enabled {
-                    args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
+            if clippy_enabled {
+                args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
+            }
+
+            let mut ccc = ClippyCompilerCalls::new(clippy_enabled);
+            let (result, _) = rustc_driver::run_compiler(&args, &mut ccc, None, None);
+            if let Err(err_count) = result {
+                if err_count > 0 {
+                    std::process::exit(1);
                 }
-
-                let mut ccc = ClippyCompilerCalls::new(clippy_enabled);
-                let (result, _) = rustc_driver::run_compiler(&args, &mut ccc, None, None);
-                if let Err(err_count) = result {
-                    if err_count > 0 {
-                        std::process::exit(1);
-                    }
-                }
-            })
-            .expect("rustc_thread failed");
+            }
+        })
+                .expect("rustc_thread failed");
     }
 }
 

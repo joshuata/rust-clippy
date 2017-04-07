@@ -8,6 +8,7 @@ extern crate rustc_plugin;
 use rustc_plugin::Registry;
 
 extern crate clippy_lints;
+extern crate clippy_analyses;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
@@ -19,6 +20,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     }
 
     clippy_lints::register_plugins(reg);
+    clippy_analyses::register_plugins(reg);
 }
 
 // only exists to let the dogfood integration test works.

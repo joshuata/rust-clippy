@@ -1,0 +1,8 @@
+[package]
+name = "clippy_analyses"
+# begin automatic update
+version = "0.0.121"
+# end automatic update
+
+[dependencies]
+datalog = ">= 0.0.2"
